@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import shredder
 
 DEBUG = 1
+from tsp import calculate_strip_similarity
 
 def display_shreds(shreds, isVertical):
     """
