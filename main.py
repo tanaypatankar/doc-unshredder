@@ -8,7 +8,7 @@ def process_and_display_shreds(image_path):
 
     :param image_path: Full path to the image file.
     """
-    strips = shred_image(image_path)
+    strips = shred_image_vertically(image_path)
 
     # Display the strips using matplotlib
     fig, axes = plt.subplots(1, len(strips), figsize=(15, 5))

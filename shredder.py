@@ -1,21 +1,24 @@
 from PIL import Image
+import random
 
-def shred_image(image_path):
+def shred_image_vertically(image_path, strip_width=9):
     """
-    Shreds an image into 9 even vertical strips and returns a list of image strips.
-    
+    Shreds an image into vertical strips of a given width, shuffles them, and returns the shuffled list.
+
     :param image_path: Path to the input image.
-    :return: List of 9 image strips.
+    :param strip_width: Width of each strip.
+    :return: List of shuffled image strips.
     """
     image = Image.open(image_path)
     width, height = image.size
-    strip_width = width // 9  # Calculate the width of each strip
 
     strips = []
-    for i in range(9):
+    for i in range(width // strip_width):
         left = i * strip_width
         right = left + strip_width
         strip = image.crop((left, 0, right, height))  # Crop the strip
         strips.append(strip)
+
+    random.shuffle(strips)  # Shuffle the strips randomly
 
     return strips
