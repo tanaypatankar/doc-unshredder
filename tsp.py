@@ -2,70 +2,145 @@ import numpy as np
 from PIL import Image
 from functools import lru_cache
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
-
-def calculate_strip_similarity(strip1, strip2):
+def extract_edges(strips):
     """
-    Calculate the similarity between two image strips.
-    
-    :param strip1: First image strip (PIL.Image)
-    :param strip2: Second image strip (PIL.Image)
-    :return: A similarity score (higher means more similar)
+    Precompute left and right edges as NumPy arrays (dtype int16 for subtraction).
     """
-    # Convert strips to numpy arrays for computation
-    arr1 = np.array(strip1)
-    arr2 = np.array(strip2)
+    left_edges = []
+    right_edges = []
+    for strip in strips:
+        arr = np.array(strip).astype(np.int16)  # Convert once
+        left_edges.append(arr[:, 0])            # Left edge (height, 3)
+        right_edges.append(arr[:, -1])          # Right edge (height, 3)
+    return left_edges, right_edges
 
-    height = min(arr1.shape[0], arr2.shape[0])
-    width = min(arr1.shape[1], arr2.shape[1])
-
-    # w = np.zeros(width)
-    # for i in range(width):
-    #     if i < width // 2:
-    #         w[i] = width // 2 - i
-    #     else:
-    #         w[i] = i - width // 2
-    # w1 = 0
-    # w2 = 0
-    # for h in range(height):
-    #     w1 += arr1[h, :, 0] * w + arr1[h, :, 1] * w + arr1[h, :, 2] * w
-    #     w2 += arr2[h, :, 0] * w + arr2[h, :, 1] * w + arr2[h, :, 2] * w
-        
-    # w1 = np.sum(w1)
-    # w2 = np.sum(w2)
-
-    # # lesser is more similar
-    # similarity = np.abs(w1 - w2) / (np.sqrt(np.sum(w1 ** 2)) + np.sqrt(np.sum(w2 ** 2)) + 1e-10)
-
-    # Calculate the absolute difference between the two strips
-    edge_a = arr1[:, -1]  # (height, 3)
-    edge_b = arr2[:, 0]   # (height, 3)
-
-    # Sum absolute channel differences over all pixels
-    diff = np.abs(edge_b.astype(np.int16) - edge_a.astype(np.int16))  # (height, 3)
-    # print(diff)
-    score = np.sum(diff)  # scalar
-
-    return score
+def fast_strip_similarity(right_a, left_b):
+    """
+    Fast similarity based on pre-extracted edge arrays.
+    """
+    diff = np.abs(right_a - left_b)
+    return int(np.sum(diff))
 
 def create_similarity_matrix(strips):
-    """
-    Create a similarity matrix from the list of image strips.
-
-    :param strips: List of image strips (PIL.Image)
-    :param calculate_strip_similarity: Function to compute similarity between two strips
-    :return: A 2D list (matrix) where matrix[i][j] = similarity between strip i and strip j
-    """
     n = len(strips)
-    
-    # Initialize matrix with zeros and +1 for padding the first row/column
     similarity_matrix = [[0 for _ in range(n)] for _ in range(n)]
 
-    for i in range(0, n):
-        for j in range(0, n):  # fill lower triangle, skip first column
-            sim = calculate_strip_similarity(strips[i], strips[j])
-            similarity_matrix[i][j] = int(sim)
-            # similarity_matrix[j][i] = int(sim)  # Optional: fill symmetrically
-        # print(similarity_matrix[i])
-        # input()
+    left_edges, right_edges = extract_edges(strips)
+
+    for i in tqdm(range(n), desc="Creating fast similarity matrix"):
+        for j in range(n):
+            if i == j:
+                continue
+            score = fast_strip_similarity(right_edges[i], left_edges[j])
+            similarity_matrix[i][j] = score
+
     return similarity_matrix
+
+def find_min_pair(matrix):
+    min_value = float('inf')
+    min_i = min_j = -1
+    for i in range(len(matrix)):
+        for j in range(len(matrix)):
+            if i != j and matrix[i][j] > 0 and matrix[i][j] < min_value:
+                min_value = matrix[i][j]
+                min_i, min_j = i, j
+    return min_i, min_j, min_value
+
+def find_best_right(matrix, left_index, used):
+    min_value = float('inf')
+    min_j = -1
+    for j in range(len(matrix)):
+        if j not in used and matrix[left_index][j] > 0 and matrix[left_index][j] < min_value:
+            min_value = matrix[left_index][j]
+            min_j = j
+    return min_j, min_value
+
+def find_best_left(matrix, right_index, used):
+    min_value = float('inf')
+    min_i = -1
+    for i in range(len(matrix)):
+        if i not in used and matrix[i][right_index] > 0 and matrix[i][right_index] < min_value:
+            min_value = matrix[i][right_index]
+            min_i = i
+    return min_i, min_value
+
+def reconstruct_strips(shreds, similarity_matrix):
+    print("Reconstructing image strips...")
+    # Make a copy of the similarity matrix to avoid modifying the original
+    sim_matrix = [row[:] for row in similarity_matrix]
+    reconstructed = []
+
+    # Step 1: Get initial best pair
+    left_idx, right_idx, _ = find_min_pair(sim_matrix)
+    
+    if left_idx == -1 or right_idx == -1:
+        return shreds  # No valid pairs found
+        
+    reconstructed = [shreds[left_idx], shreds[right_idx]]
+    used = {left_idx, right_idx}
+
+    for _ in tqdm(range(len(shreds) - 2), desc="Reconstructing image", mininterval=0.1):
+        # Find the best strip to add to the left
+        leftmost_idx = left_idx
+        next_left_idx, left_val = find_best_left(sim_matrix, leftmost_idx, used)
+        
+        # Find the best strip to add to the right
+        rightmost_idx = right_idx
+        next_right_idx, right_val = find_best_right(sim_matrix, rightmost_idx, used)
+
+        # If no valid extensions, break
+        if next_left_idx == -1 and next_right_idx == -1:
+            break
+
+        # Choose the better of the two
+        if next_left_idx != -1 and (next_right_idx == -1 or left_val <= right_val):
+            # Prepend to the left
+            reconstructed.insert(0, shreds[next_left_idx])
+            used.add(next_left_idx)
+            left_idx = next_left_idx
+        elif next_right_idx != -1:
+            # Append to the right
+            reconstructed.append(shreds[next_right_idx])
+            used.add(next_right_idx)
+            right_idx = next_right_idx
+        
+    # Optional: uncomment these for debugging
+    print(f"Used indices: {used}, Reconstructed length: {len(reconstructed)}")
+    show_reconstructed_image(reconstructed)
+    input("Press Enter to continue...")
+    
+    # If we haven't used all shreds, add them at the end (this is optional)
+    remaining = [shreds[i] for i in range(len(shreds)) if i not in used]
+    reconstructed.extend(remaining)
+    
+    return reconstructed
+
+
+def show_reconstructed_image(strips):
+    """
+    Concatenate and display the list of image strips.
+    :param strips: List of PIL.Image strips
+    """
+    if not strips:
+        print("No strips to display")
+        return
+        
+    # Ensure all strips have the same mode
+    mode = strips[0].mode
+    strips = [strip.convert(mode) if strip.mode != mode else strip for strip in strips]
+    
+    # Convert all strips to numpy arrays
+    arrays = [np.array(strip) for strip in strips]
+
+    # Concatenate along width (axis=1)
+    full_image = np.concatenate(arrays, axis=1)
+
+    # Display the image
+    plt.figure(figsize=(10, 6))  # Optional: control display size
+    plt.imshow(full_image)
+    plt.axis('off')  # Hide axis ticks
+    plt.title("Reconstructed Image")
+    plt.tight_layout()  # Reduce unnecessary padding
+    plt.show()

@@ -2,11 +2,10 @@ import os
 import shredder
 import tsp
 import matplotlib.pyplot as plt
-# import fast_tsp
 from tsp_solver.greedy import solve_tsp
 
 
-DEBUG = 1
+DEBUG = 0
 
 def display_ordered_shreds(shreds, order, isVertical):
     """
@@ -58,39 +57,7 @@ def display_shreds(shreds, isVertical):
         ax.imshow(strip)
         ax.axis('off')
 
-    # plt.show()
-
-    tsp_graph = tsp.create_similarity_matrix(shreds)
-    # print(f"Similarity matrix: {tsp_graph}")
-
-    # print minimum non-zero value and the row/column it belongs to
-                # reconstructed = []
-                # min_value = float('inf')
-                # min_left = -1
-                # min_right = -1
-                # min_i = -1
-                # min_j = -1
-                # for i in range(len(tsp_graph)):
-                #     for j in range(len(tsp_graph)):
-                #         if tsp_graph[i][j] > 0 and tsp_graph[i][j] < min_value:
-                #             min_value = tsp_graph[i][j]
-                #             min_i = i
-                #             min_j = j
-                # print(f"Minimum non-zero value: {min_value} at index {min_i}, jindex {min_j}")
-                # print(tsp_graph[min_j][min_i])
-                # input()
-                # tsp_graph[min_i][min_j] = 0
-                # reconstructed.append([shreds[min_i], shreds[min_j]])
-                # print(f"Reconstructed: {reconstructed}")
-
-    # for leftvals in range(len(tsp_graph)):
-    #     if leftvals != min_i and leftvals != min_j:
-
-    best_path = solve_tsp(tsp_graph)
-    print(f"Best path: {best_path}")
-    if len(shreds) in best_path:
-        best_path.remove(len(shreds))
-    display_ordered_shreds(shreds, best_path, isVertical)
+    plt.show()
 
 def process_images(image_path, vertical=True):
     """
@@ -104,6 +71,20 @@ def process_images(image_path, vertical=True):
     
     if DEBUG:
         display_shreds(strips, vertical)
+
+    # 1. Create a similarity matrix for the strips
+    tsp_graph = tsp.create_similarity_matrix(strips)
+
+    # 2. Find the best path using TSP solver
+    best_path = solve_tsp(tsp_graph)
+    if len(strips) in best_path:
+        best_path.remove(len(strips))
+    display_ordered_shreds(strips, best_path, vertical)
+
+    #     OR
+
+    # # 2. Use heurestic greedy algorithm to find the best path
+    # result = tsp.reconstruct_strips(strips, tsp_graph)
 
 if __name__ == "__main__":
     # Input folder path containing the images to be processed
