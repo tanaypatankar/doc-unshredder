@@ -1,9 +1,40 @@
 import os
-from matplotlib import pyplot as plt
 import shredder
+import tsp
+import matplotlib.pyplot as plt
+# import fast_tsp
+from tsp_solver.greedy import solve_tsp
+
 
 DEBUG = 1
-import tsp
+
+def display_ordered_shreds(shreds, order, isVertical):
+    """
+    Displays the shreds in a specific order.
+
+    :param shreds: List of PIL.Image shreds.
+    :param order: List of indices specifying the order in which to display the shreds.
+    :param isVertical: Boolean indicating vertical (True) or horizontal (False) shreds.
+    """
+    ordered_shreds = [shreds[i] for i in order]
+
+    # Choose display layout
+    if isVertical:
+        fig, axes = plt.subplots(1, len(ordered_shreds), figsize=(len(ordered_shreds) * 0.7, 2.5))
+    else:
+        fig, axes = plt.subplots(len(ordered_shreds), 1, figsize=(6, len(ordered_shreds) * 0.3))
+
+    # Make sure axes is always iterable
+    if len(ordered_shreds) == 1:
+        axes = [axes]
+
+    for ax, strip in zip(axes, ordered_shreds):
+        ax.imshow(strip)
+        ax.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 
 def display_shreds(shreds, isVertical):
     """
@@ -27,15 +58,39 @@ def display_shreds(shreds, isVertical):
         ax.imshow(strip)
         ax.axis('off')
 
-    plt.show()
+    # plt.show()
 
+    tsp_graph = tsp.create_similarity_matrix(shreds)
+    # print(f"Similarity matrix: {tsp_graph}")
 
-    tsp_graph = tsp.create_graph(shreds)
-    best_path, min_similarity = tsp.solve_tsp(tsp_graph)
+    # print minimum non-zero value and the row/column it belongs to
+                # reconstructed = []
+                # min_value = float('inf')
+                # min_left = -1
+                # min_right = -1
+                # min_i = -1
+                # min_j = -1
+                # for i in range(len(tsp_graph)):
+                #     for j in range(len(tsp_graph)):
+                #         if tsp_graph[i][j] > 0 and tsp_graph[i][j] < min_value:
+                #             min_value = tsp_graph[i][j]
+                #             min_i = i
+                #             min_j = j
+                # print(f"Minimum non-zero value: {min_value} at index {min_i}, jindex {min_j}")
+                # print(tsp_graph[min_j][min_i])
+                # input()
+                # tsp_graph[min_i][min_j] = 0
+                # reconstructed.append([shreds[min_i], shreds[min_j]])
+                # print(f"Reconstructed: {reconstructed}")
+
+    # for leftvals in range(len(tsp_graph)):
+    #     if leftvals != min_i and leftvals != min_j:
+
+    best_path = solve_tsp(tsp_graph)
     print(f"Best path: {best_path}")
-    print(f"Minimum similarity: {min_similarity}")
-    # Display the best path of strips
-    tsp.display_best_path(shreds, best_path)
+    if len(shreds) in best_path:
+        best_path.remove(len(shreds))
+    display_ordered_shreds(shreds, best_path, isVertical)
 
 def process_images(image_path, vertical=True):
     """
@@ -45,7 +100,7 @@ def process_images(image_path, vertical=True):
     :param vertical: Boolean flag indicating whether to create vertical strips (True) or horizontal strips (False).
     """
     # Shred the image into strips (vertical or horizontal)
-    strips = shredder.shred_image(image_path, strip_size=9, vertical=vertical)
+    strips = shredder.shred_image(image_path, strip_size=1, vertical=vertical)
     
     if DEBUG:
         display_shreds(strips, vertical)
