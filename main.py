@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import shredder
 
 DEBUG = 1
-from tsp import calculate_strip_similarity
+import tsp
 
 def display_shreds(shreds, isVertical):
     """
@@ -29,6 +29,14 @@ def display_shreds(shreds, isVertical):
 
     plt.show()
 
+
+    tsp_graph = tsp.create_graph(shreds)
+    best_path, min_similarity = tsp.solve_tsp(tsp_graph)
+    print(f"Best path: {best_path}")
+    print(f"Minimum similarity: {min_similarity}")
+    # Display the best path of strips
+    tsp.display_best_path(shreds, best_path)
+
 def process_images(image_path, vertical=True):
     """
     Shreds a single image and displays the shredded strips using matplotlib.
@@ -44,10 +52,10 @@ def process_images(image_path, vertical=True):
 
 if __name__ == "__main__":
     # Input folder path containing the images to be processed
-    input_folder = "./Input-Img" 
+    input_folder = "./Input" 
 
     # Process all .jpg files in the folder
     for filename in os.listdir(input_folder):
         if filename.lower().endswith(".jpg"):
             image_path = os.path.join(input_folder, filename)  
-            process_images(image_path, vertical=False) 
+            process_images(image_path, vertical=True) 
