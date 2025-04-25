@@ -7,33 +7,43 @@ from tsp_solver.greedy import solve_tsp
 
 DEBUG = 0
 
-def display_ordered_shreds(shreds, order, isVertical):
+def calculate_accuracy(original, reconstructed):
     """
-    Displays the shreds in a specific order.
+    Calculate the accuracy of the reconstructed image compared to the original image.
 
-    :param shreds: List of PIL.Image shreds.
-    :param order: List of indices specifying the order in which to display the shreds.
-    :param isVertical: Boolean indicating vertical (True) or horizontal (False) shreds.
+    :param original: List of original unshuffled strips
+    :param reconstructed: List of reconstructed strips
+    :return: Accuracy as a percentage.
     """
-    ordered_shreds = [shreds[i] for i in order]
-
-    # Choose display layout
-    if isVertical:
-        fig, axes = plt.subplots(1, len(ordered_shreds), figsize=(len(ordered_shreds) * 0.7, 2.5))
-    else:
-        fig, axes = plt.subplots(len(ordered_shreds), 1, figsize=(6, len(ordered_shreds) * 0.3))
-
-    # Make sure axes is always iterable
-    if len(ordered_shreds) == 1:
-        axes = [axes]
-
-    for ax, strip in zip(axes, ordered_shreds):
-        ax.imshow(strip)
-        ax.axis('off')
-
-    plt.tight_layout()
-    plt.show()
-
+    # Check that the lists have the same length
+    if len(original) != len(reconstructed):
+        print(f"Warning: Original ({len(original)} strips) and reconstructed ({len(reconstructed)} strips) have different lengths")
+        return 0.0
+    
+    # Calculate the number of strips that are in the correct position
+    correct_strips = 0
+    total_strips = len(original)
+    
+    # Compare each strip using numpy arrays for precision
+    for i in range(total_strips):
+        orig_arr = np.array(original[i])
+        
+        # Find if this strip appears in the reconstructed image
+        for j in range(total_strips):
+            recon_arr = np.array(reconstructed[j])
+            
+            # Check if strips have the same shape
+            if orig_arr.shape != recon_arr.shape:
+                continue
+                
+            # Check if the strips are identical
+            if np.array_equal(orig_arr, recon_arr) and i == j:
+                correct_strips += 1
+                break
+    
+    # Calculate accuracy percentage
+    accuracy = (correct_strips / total_strips) * 100.0
+    return accuracy
 
 def display_shreds(shreds, isVertical):
     """
@@ -79,7 +89,8 @@ def process_images(image_path, vertical=True):
     best_path = solve_tsp(tsp_graph)
     if len(strips) in best_path:
         best_path.remove(len(strips))
-    display_ordered_shreds(strips, best_path, vertical)
+    ordered_shreds = [strips[i] for i in best_path]
+    display_shreds(ordered_shreds, vertical)
 
     #     OR
 
