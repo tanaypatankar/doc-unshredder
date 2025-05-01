@@ -35,7 +35,7 @@ def create_similarity_matrix(strips):
                 continue
             score = fast_strip_similarity(right_edges[i], left_edges[j])
             similarity_matrix[i][j] = score
-
+    # subtract mac
     return similarity_matrix
 
 def find_min_pair(matrix):
@@ -67,7 +67,6 @@ def find_best_left(matrix, right_index, used):
     return min_i, min_value
 
 def reconstruct_strips(shreds, similarity_matrix):
-    print("Reconstructing image strips...")
     # Make a copy of the similarity matrix to avoid modifying the original
     sim_matrix = [row[:] for row in similarity_matrix]
     reconstructed = []
@@ -105,11 +104,6 @@ def reconstruct_strips(shreds, similarity_matrix):
             reconstructed.append(shreds[next_right_idx])
             used.add(next_right_idx)
             right_idx = next_right_idx
-        
-    # Optional: uncomment these for debugging
-    print(f"Used indices: {used}, Reconstructed length: {len(reconstructed)}")
-    show_reconstructed_image(reconstructed)
-    input("Press Enter to continue...")
     
     # If we haven't used all shreds, add them at the end (this is optional)
     remaining = [shreds[i] for i in range(len(shreds)) if i not in used]
@@ -118,7 +112,7 @@ def reconstruct_strips(shreds, similarity_matrix):
     return reconstructed
 
 
-def show_reconstructed_image(strips):
+def reconstructed_image(strips, vertical=True):
     """
     Concatenate and display the list of image strips.
     :param strips: List of PIL.Image strips
@@ -137,10 +131,17 @@ def show_reconstructed_image(strips):
     # Concatenate along width (axis=1)
     full_image = np.concatenate(arrays, axis=1)
 
-    # Display the image
-    plt.figure(figsize=(10, 6))  # Optional: control display size
-    plt.imshow(full_image)
-    plt.axis('off')  # Hide axis ticks
-    plt.title("Reconstructed Image")
-    plt.tight_layout()  # Reduce unnecessary padding
+    if not vertical:
+        # Rotate back to original orientation if needed
+        full_image = np.rot90(full_image, k=3)
+
+    return full_image
+
+def show_reconstructed_image(image):
+    """
+    Display the reconstructed image.
+    :param image: Reconstructed image as a NumPy array
+    """
+    plt.imshow(image)
+    plt.axis('off')
     plt.show()

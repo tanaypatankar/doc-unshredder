@@ -2,48 +2,45 @@ import os
 import shredder
 import tsp
 import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
 from tsp_solver.greedy import solve_tsp
 
 
 DEBUG = 0
+IS_TSP = 0
+IS_VERTICAL = 1
 
 def calculate_accuracy(original, reconstructed):
     """
-    Calculate the accuracy of the reconstructed image compared to the original image.
+    Calculate accuracy of the reconstructed image against the original.
+    Tries both direct and reversed reconstructed order.
 
-    :param original: List of original unshuffled strips
+    :param original: List of original (unshuffled) strips
     :param reconstructed: List of reconstructed strips
-    :return: Accuracy as a percentage.
+    :return: (accuracy %, best reconstructed order)
     """
-    # Check that the lists have the same length
-    if len(original) != len(reconstructed):
-        print(f"Warning: Original ({len(original)} strips) and reconstructed ({len(reconstructed)} strips) have different lengths")
-        return 0.0
-    
-    # Calculate the number of strips that are in the correct position
-    correct_strips = 0
-    total_strips = len(original)
-    
-    # Compare each strip using numpy arrays for precision
-    for i in range(total_strips):
-        orig_arr = np.array(original[i])
-        
-        # Find if this strip appears in the reconstructed image
-        for j in range(total_strips):
-            recon_arr = np.array(reconstructed[j])
-            
-            # Check if strips have the same shape
-            if orig_arr.shape != recon_arr.shape:
-                continue
-                
-            # Check if the strips are identical
-            if np.array_equal(orig_arr, recon_arr) and i == j:
-                correct_strips += 1
+    def count_correct_matches(orig, recon):
+        count = 0
+        for i in range(len(orig)):
+            if i >= len(recon):
                 break
-    
-    # Calculate accuracy percentage
-    accuracy = (correct_strips / total_strips) * 100.0
-    return accuracy
+            if np.array_equal(np.array(orig[i]), np.array(recon[i])):
+                count += 1
+        return count
+
+    if len(original) != len(reconstructed):
+        print(f"Warning: Length mismatch ({len(original)} vs {len(reconstructed)})")
+        return 0.0, reconstructed
+
+    correct_normal = count_correct_matches(original, reconstructed)
+    reconstructed_reversed = list(reversed(reconstructed))
+    correct_reversed = count_correct_matches(original, reconstructed_reversed)
+
+    if correct_reversed > correct_normal:
+        return (correct_reversed / len(original)) * 100.0, reconstructed_reversed
+    else:
+        return (correct_normal / len(original)) * 100.0, reconstructed
 
 def display_shreds(shreds, isVertical):
     """
@@ -69,7 +66,7 @@ def display_shreds(shreds, isVertical):
 
     plt.show()
 
-def process_images(image_path, vertical=True):
+def process_images(image_path, vertical=True, shuffle=True):
     """
     Shreds a single image and displays the shredded strips using matplotlib.
 
@@ -77,32 +74,59 @@ def process_images(image_path, vertical=True):
     :param vertical: Boolean flag indicating whether to create vertical strips (True) or horizontal strips (False).
     """
     # Shred the image into strips (vertical or horizontal)
-    strips = shredder.shred_image(image_path, strip_size=1, vertical=vertical)
+    strips = shredder.shred_image(image_path, strip_size=1, vertical=vertical, shuffle=shuffle)
     
     if DEBUG:
         display_shreds(strips, vertical)
 
-    # 1. Create a similarity matrix for the strips
-    tsp_graph = tsp.create_similarity_matrix(strips)
+    return strips
 
+def reconstruct_image_tsp(shreds):
     # 2. Find the best path using TSP solver
     best_path = solve_tsp(tsp_graph)
     if len(strips) in best_path:
         best_path.remove(len(strips))
     ordered_shreds = [strips[i] for i in best_path]
-    display_shreds(ordered_shreds, vertical)
+    return ordered_shreds
 
-    #     OR
-
-    # # 2. Use heurestic greedy algorithm to find the best path
-    # result = tsp.reconstruct_strips(strips, tsp_graph)
+def reconstruct_image_heuristic(strips, tsp_graph):
+    # 2. Use heurestic greedy algorithm to find the best path
+    ordered_shreds = tsp.reconstruct_strips(strips, tsp_graph)
+    return ordered_shreds
 
 if __name__ == "__main__":
     # Input folder path containing the images to be processed
     input_folder = "./Input" 
+    # Output folder path to save the reconstructed images
+    output_folder = "./Output"
 
     # Process all .jpg files in the folder
     for filename in os.listdir(input_folder):
         if filename.lower().endswith(".jpg"):
+            print(f"Processing {filename}...")
             image_path = os.path.join(input_folder, filename)  
-            process_images(image_path, vertical=True) 
+            original_strips = process_images(image_path, vertical=IS_VERTICAL, shuffle=False)
+            strips = process_images(image_path, vertical=IS_VERTICAL) 
+            shredded_image = tsp.reconstructed_image(strips, vertical=IS_VERTICAL)
+            if IS_VERTICAL:
+                plt.imsave(os.path.join(output_folder, "Shredded_Vertical_" + filename), shredded_image)
+            else:
+                plt.imsave(os.path.join(output_folder, "Shredded_Horizontal_" + filename), shredded_image)
+            # 1. Create a similarity matrix for the strips
+            tsp_graph = tsp.create_similarity_matrix(strips)
+            # Solve with TSP
+            if IS_TSP:
+                ordered_shreds = reconstruct_image_tsp(strips)
+            else:
+                ordered_shreds = reconstruct_image_heuristic(strips, tsp_graph)
+            # 3. Calculate accuracy
+            accuracy, reconstructed_strips = calculate_accuracy(original_strips, ordered_shreds)
+            print(f"Accuracy: {accuracy:.2f}%")
+            # Save the reconstructed image
+            finalimage = tsp.reconstructed_image(reconstructed_strips, vertical=IS_VERTICAL)
+            if IS_VERTICAL:
+                plt.imsave(os.path.join(output_folder, "Reconstructed_Vertical_" + filename), finalimage)
+            else:
+                plt.imsave(os.path.join(output_folder, "Reconstructed_Horizontal_" + filename), finalimage)
+            
+
