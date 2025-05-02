@@ -1,5 +1,6 @@
 /Input/*
 /Output/*
+/Backup/*
 /__pycache__
 /venv
 /.vscode

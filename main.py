@@ -8,7 +8,7 @@ from tsp_solver.greedy import solve_tsp
 
 
 DEBUG = 0
-IS_TSP = 0
+IS_TSP = 1
 IS_VERTICAL = 1
 
 def calculate_accuracy(original, reconstructed):
