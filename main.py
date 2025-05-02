@@ -3,7 +3,6 @@ import shredder
 import tsp
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
 from tsp_solver.greedy import solve_tsp
 
 
