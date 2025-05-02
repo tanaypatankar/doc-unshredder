@@ -27,6 +27,7 @@ def shred_image(image_path, strip_size=9, vertical=True, shuffle=True):
 
     if shuffle:
         # Shuffle the strips
+        random.seed(50)
         random.shuffle(strips)
 
     return strips
