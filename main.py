@@ -1,6 +1,6 @@
 import os
 import shredder
-import tsp
+import algo
 import matplotlib.pyplot as plt
 import numpy as np
 from tsp_solver.greedy import solve_tsp
@@ -90,7 +90,7 @@ def reconstruct_image_tsp(shreds):
 
 def reconstruct_image_heuristic(strips, tsp_graph):
     # 2. Use heurestic greedy algorithm to find the best path
-    ordered_shreds = tsp.reconstruct_strips(strips, tsp_graph)
+    ordered_shreds = algo.reconstruct_strips(strips, tsp_graph)
     return ordered_shreds
 
 if __name__ == "__main__":
@@ -106,13 +106,13 @@ if __name__ == "__main__":
             image_path = os.path.join(input_folder, filename)  
             original_strips = process_images(image_path, vertical=IS_VERTICAL, shuffle=False)
             strips = process_images(image_path, vertical=IS_VERTICAL) 
-            shredded_image = tsp.reconstructed_image(strips, vertical=IS_VERTICAL)
+            shredded_image = algo.reconstructed_image(strips, vertical=IS_VERTICAL)
             if IS_VERTICAL:
                 plt.imsave(os.path.join(output_folder, "Shredded_Vertical_" + filename), shredded_image)
             else:
                 plt.imsave(os.path.join(output_folder, "Shredded_Horizontal_" + filename), shredded_image)
             # 1. Create a similarity matrix for the strips
-            tsp_graph = tsp.create_similarity_matrix(strips)
+            tsp_graph = algo.create_similarity_matrix(strips)
             # Solve with TSP
             if IS_TSP:
                 ordered_shreds = reconstruct_image_tsp(strips)
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             accuracy, reconstructed_strips = calculate_accuracy(original_strips, ordered_shreds)
             print(f"Accuracy: {accuracy:.2f}%")
             # Save the reconstructed image
-            finalimage = tsp.reconstructed_image(reconstructed_strips, vertical=IS_VERTICAL)
+            finalimage = algo.reconstructed_image(reconstructed_strips, vertical=IS_VERTICAL)
             if IS_VERTICAL:
                 plt.imsave(os.path.join(output_folder, "Reconstructed_Vertical_" + filename), finalimage)
             else:
