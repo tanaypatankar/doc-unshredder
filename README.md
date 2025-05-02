@@ -27,3 +27,17 @@ Reconstruct shredded document images.
    ```bash
    python main.py
    ```
+
+## Configuration Flags
+Inside main.py, you can configure the following flags:
+
+DEBUG = 0
+Set to 1 to enable debug mode
+
+IS_TSP = 1
+Set to 1 to use a Traveling Salesman Problem (TSP) algorithm
+| Set to 0 for a simpler greedy heuristic algorithm.
+
+IS_VERTICAL = 1
+Set to 1 if the document strips are vertical.
+| Set to 0 if the strips are horizontal.
